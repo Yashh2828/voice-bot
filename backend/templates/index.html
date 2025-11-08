@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yash’s VoiceBot (Frontend)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f7f9fc;
+      text-align: center;
+      padding: 40px;
+      color: #222;
+    }
+    h1 { color: #007bff; }
+    button {
+      padding: 12px 20px;
+      margin: 15px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover { background: #0056b3; }
+    button:disabled { background: #6c757d; cursor: not-allowed; }
+    .box {
+      max-width: 700px;
+      background: white;
+      margin: 0 auto;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+      text-align: left;
+    }
+    .conversation-history {
+      max-height: 400px;
+      overflow-y: auto;
+      margin-bottom: 20px;
+      padding: 10px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      background: #f8f9fa;
+    }
+    .message {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    .user-message {
+      background: #e3f2fd;
+      margin-left: 20%;
+      text-align: right;
+    }
+    .bot-message {
+      background: #f1f8e9;
+      margin-right: 20%;
+    }
+    .typing-indicator {
+      color: #666;
+      font-style: italic;
+      display: none;
+    }
+    .error-message {
+      background: #ffebee;
+      color: #c62828;
+      border: 1px solid #ffcdd2;
+    }
+    .timestamp {
+      font-size: 11px;
+      color: #666;
+      margin-top: 5px;
+    }
+    .input-container {
+      display: flex;
+      gap: 10px;
+      margin: 20px 0;
+      align-items: center;
+    }
+    #textInput {
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      font-size: 16px;
+    }
+    .char-counter {
+      font-size: 12px;
+      color: #666;
+      margin-top: 5px;
+    }
+    .char-counter.warning { color: #ff9800; }
+    .char-counter.error { color: #f44336; }
+    p { font-size: 16px; }
+  </style>
+</head>
+<body>
+  <h1>🎙️ Yash's VoiceBot</h1>
+  <p>Click "🎤 Start Speaking" or type your question below.</p>
+
+  <button id="micBtn">🎤 Start Speaking</button>
+  
+  <div class="input-container">
+    <input type="text" id="textInput" placeholder="Type your question..." maxlength="500">
+    <button id="askBtn">Ask</button>
+  </div>
+  
+  <div class="char-counter" id="charCounter">0/500 characters</div>
+
+  <div class="box">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3>Conversation</h3>
+      <button id="clearBtn" style="background: #dc3545; padding: 8px 16px; margin: 0;">Clear History</button>
+    </div>
+    
+    <div class="conversation-history" id="conversationHistory">
+      <div class="message bot-message">
+        <strong>Yash:</strong> Hi! I'm Yash Sinha. Ask me anything about AI/ML, my projects, or just chat! 🚀
+        <div class="timestamp">Ready to chat</div>
+      </div>
+    </div>
+    
+    <div class="typing-indicator" id="typingIndicator">
+      Yash is thinking... 🤔
+    </div>
+  </div>
+
+  <script>
+    const micBtn = document.getElementById("micBtn");
+    const askBtn = document.getElementById("askBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const textInput = document.getElementById("textInput");
+    const conversationHistory = document.getElementById("conversationHistory");
+    const typingIndicator = document.getElementById("typingIndicator");
+    const charCounter = document.getElementById("charCounter");
+
+    // Character counter
+    textInput.addEventListener("input", () => {
+      const length = textInput.value.length;
+      const maxLength = 500;
+      charCounter.textContent = `${length}/${maxLength} characters`;
+      
+      if (length > maxLength * 0.9) {
+        charCounter.className = "char-counter error";
+      } else if (length > maxLength * 0.7) {
+        charCounter.className = "char-counter warning";
+      } else {
+        charCounter.className = "char-counter";
+      }
+    });
+
+    // Add message to conversation history
+    function addMessage(text, isUser = false, isError = false) {
+      const messageDiv = document.createElement("div");
+      messageDiv.className = `message ${isUser ? "user-message" : "bot-message"}${isError ? " error-message" : ""}`;
+      
+      const timestamp = new Date().toLocaleTimeString();
+      messageDiv.innerHTML = `
+        <strong>${isUser ? "You" : "Yash"}:</strong> ${text}
+        <div class="timestamp">${timestamp}</div>
+      `;
+      
+      conversationHistory.appendChild(messageDiv);
+      conversationHistory.scrollTop = conversationHistory.scrollHeight;
+    }
+
+    // Show/hide typing indicator
+    function showTyping(show = true) {
+      typingIndicator.style.display = show ? "block" : "none";
+      if (show) {
+        conversationHistory.scrollTop = conversationHistory.scrollHeight;
+      }
+    }
+
+    // Disable/enable inputs during processing
+    function setInputsEnabled(enabled) {
+      micBtn.disabled = !enabled;
+      askBtn.disabled = !enabled;
+      textInput.disabled = !enabled;
+    }
+
+    async function sendToServer(question) {
+      if (!question.trim()) {
+        addMessage("Please enter a question!", false, true);
+        return;
+      }
+
+      // Add user message
+      addMessage(question, true);
+      
+      // Clear input and show typing
+      textInput.value = "";
+      charCounter.textContent = "0/500 characters";
+      charCounter.className = "char-counter";
+      showTyping(true);
+      setInputsEnabled(false);
+
+      try {
+        const response = await fetch("/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question })
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || `HTTP ${response.status}`);
+        }
+
+        // Add bot response
+        addMessage(data.reply);
+
+        // Speak the response
+        if ('speechSynthesis' in window) {
+          const speech = new SpeechSynthesisUtterance(data.reply);
+          speech.lang = "en-IN";
+          speech.rate = 0.9;
+          speechSynthesis.speak(speech);
+        }
+
+      } catch (error) {
+        console.error("Error:", error);
+        addMessage(`Error: ${error.message}`, false, true);
+      } finally {
+        showTyping(false);
+        setInputsEnabled(true);
+        textInput.focus();
+      }
+    }
+
+    // Handle text input
+    askBtn.addEventListener("click", () => {
+      const question = textInput.value.trim();
+      if (question) {
+        sendToServer(question);
+      }
+    });
+
+    // Handle Enter key
+    textInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter" && !askBtn.disabled) {
+        askBtn.click();
+      }
+    });
+
+    // Handle voice input
+    micBtn.addEventListener("click", () => {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        addMessage("Speech recognition not supported in this browser.", false, true);
+        return;
+      }
+
+      const recog = new SR();
+      recog.lang = "en-IN";
+      recog.continuous = false;
+      recog.interimResults = false;
+      
+      micBtn.textContent = "🔴 Listening...";
+      micBtn.disabled = true;
+
+      recog.start();
+
+      recog.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        textInput.value = transcript;
+        sendToServer(transcript);
+      };
+
+      recog.onerror = (err) => {
+        console.error("Speech recognition error:", err.error);
+        addMessage(`Voice recognition error: ${err.error}`, false, true);
+      };
+
+      recog.onend = () => {
+        micBtn.textContent = "🎤 Start Speaking";
+        micBtn.disabled = false;
+      };
+    });
+
+    // Clear conversation history
+    clearBtn.addEventListener("click", () => {
+      conversationHistory.innerHTML = `
+        <div class="message bot-message">
+          <strong>Yash:</strong> Hi! I'm Yash Sinha. Ask me anything about AI/ML, my projects, or just chat! 🚀
+          <div class="timestamp">Ready to chat</div>
+        </div>
+      `;
+    });
+
+    // Focus on input when page loads
+    window.addEventListener("load", () => {
+      textInput.focus();
+    });
+  </script>
+</body>
+</html>
