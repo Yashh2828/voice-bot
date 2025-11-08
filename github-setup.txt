@@ -1,0 +1,16 @@
+# GitHub Setup Commands
+# Replace 'YOUR_USERNAME' and 'REPOSITORY_NAME' with your actual GitHub username and repository name
+
+# Add GitHub as remote origin
+git remote add origin https://github.com/YOUR_USERNAME/REPOSITORY_NAME.git
+
+# Set main branch
+git branch -M main
+
+# Push to GitHub
+git push -u origin main
+
+# Example with common names:
+# git remote add origin https://github.com/yashsinha/voice-bot-ai.git
+# git branch -M main
+# git push -u origin main
